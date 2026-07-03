@@ -42,7 +42,7 @@ codex_env.sh
 如果想把持久化文件放到其他目录，可以传入路径：
 
 ```bash
-./setup_codex_persist.sh /mnt/data/lzt/codex_persist
+./setup_codex_persist.sh /mnt/data/codex_persist
 ```
 
 3. 让当前终端立即生效：
