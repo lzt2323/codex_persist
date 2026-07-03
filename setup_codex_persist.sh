@@ -9,12 +9,25 @@ PERSIST_ROOT="${1:-$SCRIPT_DIR}"
 CODEX_BIN_DIR="$PERSIST_ROOT/bin"
 CODEX_HOME_DIR="$PERSIST_ROOT/home"
 ENV_FILE="$PERSIST_ROOT/codex_env.sh"
+SHELL_NAME="$(basename "${SHELL:-bash}")"
+
+case "$SHELL_NAME" in
+  zsh)
+    SHELL_RC="$HOME/.zshrc"
+    ;;
+  bash)
+    SHELL_RC="$HOME/.bashrc"
+    ;;
+  *)
+    SHELL_RC="$HOME/.profile"
+    ;;
+esac
 
 mkdir -p "$CODEX_BIN_DIR" "$CODEX_HOME_DIR"
 
 chmod 700 "$CODEX_HOME_DIR" || true
 
-echo "[1/5] 设置 Codex 持久化目录..."
+echo "[1/6] 设置 Codex 持久化目录..."
 cat > "$ENV_FILE" <<EOF
 # Codex persistent environment
 export CODEX_HOME="$CODEX_HOME_DIR"
@@ -27,7 +40,20 @@ export CODEX_HOME="$CODEX_HOME_DIR"
 export CODEX_INSTALL_DIR="$CODEX_BIN_DIR"
 export PATH="$CODEX_BIN_DIR:$PATH"
 
-echo "[2/5] 写入 Codex 配置..."
+echo "[2/6] 写入 Shell 自动加载配置..."
+touch "$SHELL_RC"
+if ! grep -Fq "source \"$ENV_FILE\"" "$SHELL_RC"; then
+  {
+    echo ''
+    echo '# Codex persistent environment'
+    echo "source \"$ENV_FILE\""
+  } >> "$SHELL_RC"
+  echo "已写入：$SHELL_RC"
+else
+  echo "已存在自动加载配置：$SHELL_RC"
+fi
+
+echo "[3/6] 写入 Codex 配置..."
 CONFIG_FILE="$CODEX_HOME_DIR/config.toml"
 
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -49,7 +75,7 @@ else
   fi
 fi
 
-echo "[3/5] 检查 Codex 是否已安装..."
+echo "[4/6] 检查 Codex 是否已安装..."
 if command -v codex >/dev/null 2>&1; then
   echo "已找到 codex: $(command -v codex)"
 else
@@ -57,17 +83,18 @@ else
   curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
 fi
 
-echo "[4/5] 检查版本..."
+echo "[5/6] 检查版本..."
 codex --version || true
 
-echo "[5/5] 完成。"
+echo "[6/6] 完成。"
 
 echo
-echo "以后进入新容器后执行："
-echo "  source $ENV_FILE"
+echo "以后新开终端会自动加载 Codex 环境。"
+echo "当前终端如需立即使用，请执行："
+echo "  source \"$ENV_FILE\""
 echo
 echo "第一次使用需要登录："
-echo "  source $ENV_FILE"
+echo "  source \"$ENV_FILE\""
 echo "  codex login --device-auth"
 echo
 echo "如果 device-auth 不可用，也可以用："
