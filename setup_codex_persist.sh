@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 # 默认在本脚本所在目录创建持久化；也可以通过第一个参数指定目录。
-PERSIST_ROOT="${1:-$SCRIPT_DIR}"
+# 传入相对路径时也会规范化为绝对路径，避免在当前项目下误建目录。
+if [ "${1:-}" ]; then
+  mkdir -p "$1"
+  PERSIST_ROOT="$(cd -- "$1" && pwd)"
+else
+  PERSIST_ROOT="$SCRIPT_DIR"
+fi
 
 CODEX_BIN_DIR="$PERSIST_ROOT/bin"
 CODEX_HOME_DIR="$PERSIST_ROOT/home"
@@ -24,6 +30,15 @@ case "$SHELL_NAME" in
 esac
 
 mkdir -p "$CODEX_BIN_DIR" "$CODEX_HOME_DIR"
+
+refresh_codex_symlink() {
+  local codex_target="$CODEX_HOME_DIR/packages/standalone/current/bin/codex"
+
+  if [ -x "$codex_target" ]; then
+    ln -sfn "$codex_target" "$CODEX_BIN_DIR/codex"
+    echo "已刷新 codex 入口链接：$CODEX_BIN_DIR/codex -> $codex_target"
+  fi
+}
 
 chmod 700 "$CODEX_HOME_DIR" || true
 
@@ -82,6 +97,8 @@ else
   echo "未找到 codex，开始安装到挂载目录：$CODEX_BIN_DIR"
   curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
 fi
+
+refresh_codex_symlink
 
 echo "[5/6] 检查版本..."
 codex --version || true
